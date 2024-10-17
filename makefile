@@ -31,7 +31,10 @@ new-migration:
 	@echo "Creating new migration named '$(name)'..."
 	migrate create -ext sql -dir db/migration -seq $(name)
 
-test:
-	go test -v -cover -short ./...
+sqlc:
+	sqlc generate
 
-.PHONY: run migrate-up migrate-down migrate-up1 migrate-down1 new-migration test
+test:
+	go test -v -cover ./...
+
+.PHONY: run migrate-up migrate-down migrate-up1 migrate-down1 new-migration sqlc test
