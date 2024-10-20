@@ -2,6 +2,7 @@ package tutorial
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"os"
 	"testing"
@@ -15,15 +16,17 @@ const (
 )
 
 var testQuries *Queries
+var testDB *sql.DB
 
 func TestMain(m *testing.M){
-	conn, err := pgxpool.New(context.Background(), dbSource)
+	var err error
+	testDB, err := pgxpool.New(context.Background(), dbSource)
 	if err != nil{
 		log.Fatal("Cannot connect to database")
 	}
-	defer conn.Close()
+	defer testDB.Close()
 
-	testQuries = New(conn)
+	testQuries = New(testDB)
 
 	os.Exit(m.Run())
 }
