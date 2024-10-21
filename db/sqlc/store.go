@@ -2,6 +2,7 @@ package tutorial
 
 import (
 	"context"
+	"log"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -15,26 +16,33 @@ type Store struct {
 
 // New store creates a new store
 func NewStore(db *pgxpool.Pool) *Store {
-    return &Store{db: db, Queries: New(db)}
+    if db == nil {
+        log.Fatal("Database connection pool is nil")
+    }
+    return &Store{
+        db: db,
+    }
 }
-
 // ExecTx creates a function within a databased transaction
-func (store *Store) execTx(ctx context.Context, fn func(*Queries)error) error {
-	tx, err := store.db.BeginTx(ctx, pgx.TxOptions{}) 
-    if err!= nil {
+func (store *Store) execTx(ctx context.Context, fn func(*Queries) error) error {
+    if store.db == nil {
+        log.Fatal("Database connection pool is nil")
+    }
+
+    tx, err := store.db.BeginTx(ctx, pgx.TxOptions{}) 
+    if err != nil {
         return err
     }
     defer tx.Rollback(ctx)
 
     queries := New(tx)
     err = fn(queries)
-    if err!= nil {
+    if err != nil {
         return err
     }
 
     return tx.Commit(ctx)
 }
-
 
 // TransferTxParams contains the input parameters of the transfer transaction
 type TransferTxParams struct{
@@ -60,24 +68,28 @@ func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (Trans
 		var err error
 		result.Transfer, err = q.CreateTransfer(ctx, CreateTransferParams{
 			FromAccountID: arg.FromAccountID,
-            ToAccountID: arg.ToAccountID,
-            Amount: arg.Amount,
+			ToAccountID:   arg.ToAccountID,
+			Amount:        arg.Amount,
 		})
-		if(err != nil){
+		if err != nil {
+			log.Printf("Error creating transfer: %v", err)
 			return err
 		}
+
 		result.FromEntry, err = q.CreateEntry(ctx, CreateEntryParams{
 			AccountID: arg.FromAccountID,
-			Amount: -arg.Amount,
+			Amount:    -arg.Amount,
 		})
 		if(err!= nil){
+			log.Printf("Error creating from entry: %v", err)
             return err
         }
 		result.ToEntry, err = q.CreateEntry(ctx, CreateEntryParams{
-			AccountID: arg.FromAccountID,
-			Amount: arg.Amount,
+			AccountID: arg.ToAccountID,  // Fixed here
+			Amount:    arg.Amount,
 		})
 		if(err!= nil){
+			log.Printf("Error creating to entry: %v", err)
             return err
         }
 
